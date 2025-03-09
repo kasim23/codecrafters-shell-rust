@@ -20,7 +20,18 @@ fn main() {
 
         let command = input.trim();
 
-        if command == "exit 0"{
+
+        // echo builtin added
+        if command.starts_with("echo"){
+            // split command into words
+            let mut parts = command.split_whitespace();
+            // if first part is echo, skip it
+            parts.next();
+            // the rest is what we want to echo
+            let output: Vec<&str> = parts.collect();
+            println!("{}", output.join(" "));
+            continue; // Skip printing the error message below
+        } else if command == "exit 0" {
             std::process::exit(0); // or break;
         }
 
