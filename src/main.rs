@@ -20,6 +20,10 @@ fn main() {
 
         let command = input.trim();
 
+        if command == "exit 0"{
+            std::process::exit(0); // or break;
+        }
+
         // For now every command is considered invalid
         println!("{}: command not found", command);
         input.clear();
