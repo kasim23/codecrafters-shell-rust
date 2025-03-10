@@ -16,34 +16,48 @@ fn main() {
         }
         let command = input.trim();
 
-        // echo builtin added
         if command.starts_with("echo") {
-            // Split command into words.
+            // echo builtin
             let mut parts = command.split_whitespace();
-            parts.next(); // Skip the "echo" part.
-            // The rest is what we want to echo.
+            parts.next(); // Skip "echo"
             let output: Vec<&str> = parts.collect();
             println!("{}", output.join(" "));
-            continue; // Skip printing the error message below.
+            continue; // Skip further processing
         } else if command == "exit 0" {
-            std::process::exit(0); // Exits with code 0.
+            std::process::exit(0);
         } else if command.starts_with("type") {
+            // type builtin
             let mut parts = command.split_whitespace();
-            parts.next(); // Skip the "type" command itself.
-            if let Some(cmd) = parts.next() { // Check if there's an argument.
+            parts.next(); // Skip "type"
+            if let Some(cmd) = parts.next() {
                 match cmd {
-                    "echo" | "exit" | "type" => println!("{} is a shell builtin", cmd),
-                    _ => println!("{}: not found", cmd),
+                    "echo" | "exit" | "type" => {
+                        println!("{} is a shell builtin", cmd);
+                    },
+                    _ => {
+                        let path_env = std::env::var("PATH").unwrap_or_default();
+                        let mut found = false;
+                        for dir in path_env.split(':') {
+                            let candidate = std::path::Path::new(dir).join(cmd);
+                            if candidate.exists() && candidate.is_file() {
+                                println!("{} is {}", cmd, candidate.display());
+                                found = true;
+                                break;
+                            }
+                        }
+                        if !found {
+                            println!("{}: not found", cmd);
+                        }
+                    },
                 }
             } else {
-                // Print error if no argument is provided.
                 println!("type: not enough arguments");
             }
-            continue; // Skip printing the error message below.
+            continue; // Skip further processing
+        } else {
+            // For any unrecognized command
+            println!("{}: command not found", command);
         }
-
-        // For now, every command that isn't built in is considered invalid.
-        println!("{}: command not found", command);
         input.clear();
     }
 }
