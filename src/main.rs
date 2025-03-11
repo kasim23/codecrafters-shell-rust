@@ -56,7 +56,28 @@ fn main() {
             continue; // Skip further processing
         } else {
             // For any unrecognized command
-            println!("{}: command not found", command);
+            // println!("{}: command not found", command);
+            let mut parts = command.split_whitespace();
+            if let Some(prog) = parts.next(){
+                let args: Vec<&str> = parts.collect();
+                match std::process::Command::new(prog).args(&args).status() {
+                    Ok(status) => {
+                        // optionally check status or do nothing
+                        if !status.success() {
+                            // command didn't exit successfully
+                            // optionally check the actual exit code
+                            if let Some(code) = status.code() {
+                                println!("Command {} exited with code {}", prog, code);
+                            } else {
+                                println!("Command {} terminated by signal", prog);
+                            }
+                        }
+                    },
+                    Err(_) => {
+                        println!("{}: command not found", prog);
+                    }
+                }
+            }
         }
         input.clear();
     }
