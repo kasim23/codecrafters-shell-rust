@@ -75,7 +75,17 @@ fn main() {
                 
             } else { // cases when user types cd foo or just cd
                 // TODO: optionally handle the error cases or print error message
-                println!("cd: {}: No such file or directory", output.get(0).unwrap_or(&""));
+                // relative path branch
+                if !output.is_empty() {
+                    match std::env::set_current_dir(output[0]) {
+                        Ok(()) => {/*successfully change directory and do nothing*/},
+                        Err(_) => {
+                            println!("cd: {}: No such file or directory", output[0]);
+                        }
+                    }
+                } else{
+                    println!("cd: No directory provided");
+                }
             }
          }
         
