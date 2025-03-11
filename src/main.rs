@@ -31,7 +31,7 @@ fn main() {
             parts.next(); // Skip "type"
             if let Some(cmd) = parts.next() {
                 match cmd {
-                    "echo" | "exit" | "type" | "pwd" => {
+                    "echo" | "exit" | "type" | "pwd" | "cd" => {
                         println!("{} is a shell builtin", cmd);
                     },
                     _ => {
@@ -60,7 +60,24 @@ fn main() {
                  Err(e) => println!("Error getting current directory: {}", e),
             }
             continue; //x
-        }
+        } else if command.starts_with("cd") {
+            let mut parts = command.split_whitespace();
+            parts.next(); // skip cd
+            let output: Vec<&str> = parts.collect(); // if cmd cd /usr/local/bin then output will be vector containing /usr/local/bin
+            if !output.is_empty() && output[0].starts_with("/"){
+                // TODO: proceed to change the directory
+                match std::env::set_current_dir(output[0]) {
+                    Ok(()) => { /* directory changed successfully, do nothing */ },
+                    Err(_) => {
+                        println!("cd: {}: No such file or directory", output[0]);
+                    },
+                }
+                
+            } else { // cases when user types cd foo or just cd
+                // TODO: optionally handle the error cases or print error message
+                println!("cd: {}: No such file or directory", output.get(0).unwrap_or(&""));
+            }
+         }
         
           else {
             // For any unrecognized command
