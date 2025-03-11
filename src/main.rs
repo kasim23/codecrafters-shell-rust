@@ -31,7 +31,7 @@ fn main() {
             parts.next(); // Skip "type"
             if let Some(cmd) = parts.next() {
                 match cmd {
-                    "echo" | "exit" | "type" => {
+                    "echo" | "exit" | "type" | "pwd" => {
                         println!("{} is a shell builtin", cmd);
                     },
                     _ => {
@@ -54,7 +54,15 @@ fn main() {
                 println!("type: not enough arguments");
             }
             continue; // Skip further processing
-        } else {
+        } else if command.starts_with("pwd") {
+            match std::env::current_dir() {
+                Ok(path) => println!("{}", path.display()),
+                 Err(e) => println!("Error getting current directory: {}", e),
+            }
+            continue; //x
+        }
+        
+          else {
             // For any unrecognized command
             // println!("{}: command not found", command);
             let mut parts = command.split_whitespace();
