@@ -73,12 +73,29 @@ fn main() {
                     },
                 }
                 
-            } else { // cases when user types cd foo or just cd
+            } else if output[0] == "~" {
+                let home_dir = std::env::var("HOME");
+                match std::env::var("HOME") {
+                    Ok(home_dir) => {
+                        match std::env::set_current_dir(&home_dir) {
+                            Ok(()) => {/*success: directory changed to home_dir*/},
+                            Err(_) => {
+                                println!("cd: ~: No such file or directory");
+                            },
+                        }
+                    },
+                    Err(_) => {
+                        println!("cd: ~: No such file or directory");
+                    }
+                }
+            }
+              else { // cases when user types cd foo or just cd
                 // TODO: optionally handle the error cases or print error message
                 // relative path branch
                 if !output.is_empty() {
+                    // change to the relative directory
                     match std::env::set_current_dir(output[0]) {
-                        Ok(()) => {/*successfully change directory and do nothing*/},
+                        Ok(()) => {/* success: directory changed */},
                         Err(_) => {
                             println!("cd: {}: No such file or directory", output[0]);
                         }
@@ -86,6 +103,7 @@ fn main() {
                 } else{
                     println!("cd: No directory provided");
                 }
+                
             }
          }
         
