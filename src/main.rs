@@ -1,6 +1,36 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
 
+pub fn parse_command(input: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+
+    for c in input.chars() {
+        match c {
+            '\'' => {
+                in_quotes = !in_quotes; // Toggle quoted state
+            }
+            ' ' if !in_quotes => {
+                if !current.is_empty() {
+                    tokens.push(current.clone());
+                    current.clear();
+                }
+            }
+            _ => {
+                current.push(c);
+            }
+        }
+    }
+    // Push the last token if there is one
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+
+    tokens
+}
+
+
 fn main() {
     // Wait for user input
     let stdin = io::stdin();
@@ -17,12 +47,18 @@ fn main() {
         let command = input.trim();
 
         if command.starts_with("echo") {
-            // echo builtin
-            let mut parts = command.split_whitespace();
-            parts.next(); // Skip "echo"
-            let output: Vec<&str> = parts.collect();
+            // Instead of using split_whitespace, call your parser
+            let tokens = parse_command(command);
+            // The first token should be "echo", so skip it
+            let output = tokens.into_iter().skip(1).collect::<Vec<_>>();
             println!("{}", output.join(" "));
-            continue; // Skip further processing
+            continue;
+            // echo builtin
+            // let mut parts = command.split_whitespace();
+            // parts.next(); // Skip "echo"
+            // let output: Vec<&str> = parts.collect();
+            // println!("{}", output.join(" "));
+            // continue; // Skip further processing
         } else if command == "exit 0" {
             std::process::exit(0);
         } else if command.starts_with("type") {
@@ -64,7 +100,9 @@ fn main() {
             let mut parts = command.split_whitespace();
             parts.next(); // skip cd
             let output: Vec<&str> = parts.collect(); // if cmd cd /usr/local/bin then output will be vector containing /usr/local/bin
-            if !output.is_empty() && output[0].starts_with("/"){
+            if output.is_empty() {
+                println!("cd: No directory provided");
+            } else if !output.is_empty() && output[0].starts_with("/"){
                 // TODO: proceed to change the directory
                 match std::env::set_current_dir(output[0]) {
                     Ok(()) => { /* directory changed successfully, do nothing */ },
@@ -110,10 +148,11 @@ fn main() {
           else {
             // For any unrecognized command
             // println!("{}: command not found", command);
-            let mut parts = command.split_whitespace();
-            if let Some(prog) = parts.next(){
-                let args: Vec<&str> = parts.collect();
-                match std::process::Command::new(prog).args(&args).status() {
+            //let mut parts = command.split_whitespace();
+            let tokens = parse_command(command);
+            if let Some(prog) = tokens.get(0) {
+                let args = &tokens[1..];
+                match std::process::Command::new(prog).args(args).status() {
                     Ok(status) => {
                         // optionally check status or do nothing
                         if !status.success() {
