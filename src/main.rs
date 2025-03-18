@@ -1,33 +1,89 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
 
+
+// this gives you three distinct states, None: not inside any quotes, Single: inside single quotes, Double: inside double quotes
+#[derive(Debug, PartialEq)]
+enum QuoteState {
+    None,
+    Single,
+    Double,
+}
+
 pub fn parse_command(input: &str) -> Vec<String> {
+    /*Instead of matching only on ' ' and '\'', you’ll now match on:
+    - A single quote (') and check if you’re in None or Double state (in Double, it’s literal).
+    - A double quote (") and check if you’re in None or Single state (in Single, it’s literal).
+    - A backslash (\) when in Double state.
+    - The space character, but only if you're in None. */
     let mut tokens = Vec::new();
     let mut current = String::new();
-    let mut in_quotes = false;
+    let mut state = QuoteState::None;
+    // Create a Peekable iterator over the input characters.
+    let mut iter = input.chars().peekable();
 
-    for c in input.chars() {
+    while let Some(c) = iter.next() {
         match c {
             '\'' => {
-                in_quotes = !in_quotes; // Toggle quoted state
-            }
-            ' ' if !in_quotes => {
-                if !current.is_empty() {
-                    tokens.push(current.clone());
-                    current.clear();
+                // Handle single quotes.
+                match state {
+                    QuoteState::None => state = QuoteState::Single,
+                    QuoteState::Single => state = QuoteState::None,
+                    QuoteState::Double => current.push(c), // In double quotes, treat single quote as literal.
                 }
-            }
+            },
+            '"' => {
+                // Handle double quotes.
+                match state {
+                    QuoteState::None => state = QuoteState::Double,
+                    QuoteState::Double => state = QuoteState::None,
+                    QuoteState::Single => current.push(c), // In single quotes, treat double quote as literal.
+                }
+            },
+            '\\' => {
+                // Handle backslash only in double quote state.
+                if let QuoteState::Double = state {
+                    // Peek at the next character without consuming it.
+                    if let Some(&next_char) = iter.peek() {
+                        match next_char {
+                            '\\' | '$' | '"' | '\n' => {
+                                iter.next(); // Consume the next character.
+                                current.push(next_char);
+                            },
+                            _ => {
+                                // If the next character is not escapable, push the backslash.
+                                current.push('\\');
+                            }
+                        }
+                    } else {
+                        current.push('\\');
+                    }
+                } else {
+                    // Outside double quotes, backslash is treated literally.
+                    current.push('\\');
+                }
+            },
+            ' ' => {
+                // A space acts as a delimiter only when not inside quotes.
+                if state == QuoteState::None {
+                    if !current.is_empty() {
+                        tokens.push(current.clone());
+                        current.clear();
+                    }
+                } else {
+                    current.push(c);
+                }
+            },
             _ => {
                 current.push(c);
             }
         }
     }
-    // Push the last token if there is one
+    // Push any remaining token.
     if !current.is_empty() {
         tokens.push(current);
     }
-
-    tokens
+     tokens
 }
 
 
@@ -112,10 +168,10 @@ fn main() {
                 }
                 
             } else if output[0] == "~" {
-                let home_dir = std::env::var("HOME");
+                let _home_dir = std::env::var("HOME");
                 match std::env::var("HOME") {
-                    Ok(home_dir) => {
-                        match std::env::set_current_dir(&home_dir) {
+                    Ok(_home_dir) => {
+                        match std::env::set_current_dir(&_home_dir) {
                             Ok(()) => {/*success: directory changed to home_dir*/},
                             Err(_) => {
                                 println!("cd: ~: No such file or directory");
