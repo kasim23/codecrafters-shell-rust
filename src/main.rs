@@ -16,10 +16,11 @@ pub fn parse_command(input: &str) -> Vec<String> {
     - A double quote (") and check if you’re in None or Single state (in Single, it’s literal).
     - A backslash (\) when in Double state.
     - The space character, but only if you're in None. */
+    
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut state = QuoteState::None;
-    // Create a Peekable iterator over the input characters.
+    // Create a peekable iterator over the input characters.
     let mut iter = input.chars().peekable();
 
     while let Some(c) = iter.next() {
@@ -29,7 +30,7 @@ pub fn parse_command(input: &str) -> Vec<String> {
                 match state {
                     QuoteState::None => state = QuoteState::Single,
                     QuoteState::Single => state = QuoteState::None,
-                    QuoteState::Double => current.push(c), // In double quotes, treat single quote as literal.
+                    QuoteState::Double => current.push(c), // In double quotes, single quotes are literal.
                 }
             },
             '"' => {
@@ -37,34 +38,46 @@ pub fn parse_command(input: &str) -> Vec<String> {
                 match state {
                     QuoteState::None => state = QuoteState::Double,
                     QuoteState::Double => state = QuoteState::None,
-                    QuoteState::Single => current.push(c), // In single quotes, treat double quote as literal.
+                    QuoteState::Single => current.push(c), // In single quotes, double quotes are literal.
                 }
             },
             '\\' => {
-                // Handle backslash only in double quote state.
-                if let QuoteState::Double = state {
-                    // Peek at the next character without consuming it.
-                    if let Some(&next_char) = iter.peek() {
-                        match next_char {
-                            '\\' | '$' | '"' | '\n' => {
-                                iter.next(); // Consume the next character.
-                                current.push(next_char);
-                            },
-                            _ => {
-                                // If the next character is not escapable, push the backslash.
-                                current.push('\\');
+                // Handle backslash escapes.
+                match state {
+                    QuoteState::Double => {
+                        // In double quotes, check if the next character should be escaped.
+                        if let Some(&next_char) = iter.peek() {
+                            match next_char {
+                                '\\' | '$' | '"' | '\n' => {
+                                    iter.next(); // Consume the next character.
+                                    current.push(next_char);
+                                },
+                                _ => {
+                                    // Not escapable, so treat the backslash as literal.
+                                    current.push('\\');
+                                }
                             }
+                        } else {
+                            current.push('\\');
                         }
-                    } else {
+                    },
+                    QuoteState::None => {
+                        // Outside any quotes, backslash escapes the next character.
+                        if let Some(&next_char) = iter.peek() {
+                            iter.next(); // Consume the escaped character.
+                            current.push(next_char);
+                        } else {
+                            current.push('\\');
+                        }
+                    },
+                    QuoteState::Single => {
+                        // Inside single quotes, backslash is literal.
                         current.push('\\');
                     }
-                } else {
-                    // Outside double quotes, backslash is treated literally.
-                    current.push('\\');
                 }
             },
             ' ' => {
-                // A space acts as a delimiter only when not inside quotes.
+                // Space is a delimiter only when not inside quotes.
                 if state == QuoteState::None {
                     if !current.is_empty() {
                         tokens.push(current.clone());
@@ -75,15 +88,16 @@ pub fn parse_command(input: &str) -> Vec<String> {
                 }
             },
             _ => {
+                // All other characters are appended to the current token.
                 current.push(c);
             }
         }
     }
-    // Push any remaining token.
+    // If there's a leftover token, push it into tokens.
     if !current.is_empty() {
         tokens.push(current);
     }
-     tokens
+    tokens
 }
 
 
