@@ -138,7 +138,31 @@ fn main() {
                     println!("Error: no output file specified after redirection operator");
                     continue;
                 }
-            } else {
+            } else if let Some(pos) = tokens.iter().position(|x| x == "2>") {
+                let command_part = tokens[..pos].to_vec();
+                let output_file = tokens.get(pos + 1).cloned();
+                // process redirection stderr
+                if let  Some(file_token) = output_file {
+                    // open file for writing
+                    let file = File::create(&file_token).unwrap_or_else(|e| {
+                        println!("Error openeing {}: {}", file_token, e);
+                        std::process::exit(1);
+                    });
+                    let executable = command_part[0].clone();
+                    let args = &command_part[1..];
+                    // redirect stderr to file
+                    std::process::Command::new(executable)
+                        .args(args)
+                        .stderr(file)
+                        .status();
+                    continue; // skip normal execution
+                } else {
+                    println!("Error: no output file specified after redirection operator");
+                    continue;
+                }
+            }  
+            
+              else {
                 // Process as a normal echo command.
                 let output = tokens.into_iter().skip(1).collect::<Vec<_>>();
                 println!("{}", output.join(" "));
@@ -262,7 +286,31 @@ fn main() {
                     println!("Error: no output file specified after redirection operator");
                     continue; // Skip further processing.
                 }
-            } else {
+            } else if let Some(pos) = tokens.iter().position(|x| x == "2>") {
+                let command_part = tokens[..pos].to_vec();
+                let output_file = tokens.get(pos + 1).cloned();
+                // process redirection stderr
+                if let  Some(file_token) = output_file {
+                    // open file for writing
+                    let file = File::create(&file_token).unwrap_or_else(|e| {
+                        println!("Error openeing {}: {}", file_token, e);
+                        std::process::exit(1);
+                    });
+                    let executable = command_part[0].clone();
+                    let args = &command_part[1..];
+                    // redirect stderr to file
+                    std::process::Command::new(executable)
+                        .args(args)
+                        .stderr(file)
+                        .status();
+                    continue; // skip normal execution
+                } else {
+                    println!("Error: no output file specified after redirection operator");
+                    continue;
+                }
+            } 
+            
+            else {
                 // Process as a normal command.
                 if let Some(prog) = tokens.get(0) {
                     let args = &tokens[1..];
