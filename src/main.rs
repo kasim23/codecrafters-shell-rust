@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
+use std::fs::File;
 
 
 // this gives you three distinct states, None: not inside any quotes, Single: inside single quotes, Double: inside double quotes
@@ -22,8 +23,6 @@ pub fn parse_command(input: &str) -> Vec<String> {
     let mut state = QuoteState::None;
     // Create a peekable iterator over the input characters.
     let mut iter = input.chars().peekable();
-    
-
 
     while let Some(c) = iter.next() {
         match c {
@@ -119,18 +118,32 @@ fn main() {
         let command = input.trim();
 
         if command.starts_with("echo") {
-            // Instead of using split_whitespace, call your parser
             let tokens = parse_command(command);
-            // The first token should be "echo", so skip it
-            let output = tokens.into_iter().skip(1).collect::<Vec<_>>();
-            println!("{}", output.join(" "));
-            continue;
-            // echo builtin
-            // let mut parts = command.split_whitespace();
-            // parts.next(); // Skip "echo"
-            // let output: Vec<&str> = parts.collect();
-            // println!("{}", output.join(" "));
-            // continue; // Skip further processing
+            if let Some(pos) = tokens.iter().position(|x| x == ">" || x == "1>") {
+                let command_part = tokens[..pos].to_vec();
+                let output_file = tokens.get(pos + 1).cloned();
+                // Process redirection: open file, execute command with stdout redirected.
+                if let Some(file_token) = output_file {
+                    let file = File::create(&file_token).unwrap_or_else(|e| {
+                        println!("Error opening {}: {}", file_token, e);
+                        std::process::exit(1);
+                    });
+                    // Extract the echo arguments from the command part (skip the "echo" token).
+                    let output = command_part.into_iter().skip(1).collect::<Vec<_>>();
+                    // Instead of printing to stdout, write to the file.
+                    use std::io::Write;
+                    writeln!(&mut &file, "{}", output.join(" ")).unwrap();
+                    continue; // Skip normal echo processing.
+                } else {
+                    println!("Error: no output file specified after redirection operator");
+                    continue;
+                }
+            } else {
+                // Process as a normal echo command.
+                let output = tokens.into_iter().skip(1).collect::<Vec<_>>();
+                println!("{}", output.join(" "));
+                continue;
+            }
         } else if command == "exit 0" {
             std::process::exit(0);
         } else if command.starts_with("type") {
@@ -222,26 +235,57 @@ fn main() {
             // println!("{}: command not found", command);
             //let mut parts = command.split_whitespace();
             let tokens = parse_command(command);
-            if let Some(prog) = tokens.get(0) {
-                let args = &tokens[1..];
-                match std::process::Command::new(prog).args(args).status() {
-                    Ok(status) => {
-                        // optionally check status or do nothing
-                        if !status.success() {
-                            // command didn't exit successfully
-                            // optionally check the actual exit code
-                            if let Some(code) = status.code() {
-                                println!("Command {} exited with code {}", prog, code);
-                            } else {
-                                println!("Command {} terminated by signal", prog);
+            
+            if let Some(pos) = tokens.iter().position(|x| x == ">" || x == "1>") {
+                let command_part = tokens[..pos].to_vec();
+                let output_file = tokens.get(pos + 1).cloned();
+                // Process redirection: open file, execute command with stdout redirected.
+                if let Some(file_token) = output_file {
+                    // Open the file for writing (using std::fs::File::create)
+                    // Open the file for writing:
+                    let file = File::create(&file_token).unwrap_or_else(|e| {
+                        println!("Error opening {}: {}", file_token, e);
+                        std::process::exit(1);
+                    });
+                    // Now extract the executable and arguments:
+                    let executable = command_part[0].clone();
+                    let args = &command_part[1..];
+                    // And then use .stdout(file_handle) on your Command. Execute the command with redirection
+                    std::process::Command::new(executable)
+                        .args(args)
+                        .stdout(file)
+                        .status();
+
+                    // skip the normal command execution
+                    continue;
+                } else {
+                    println!("Error: no output file specified after redirection operator");
+                    continue; // Skip further processing.
+                }
+            } else {
+                // Process as a normal command.
+                if let Some(prog) = tokens.get(0) {
+                    let args = &tokens[1..];
+                    match std::process::Command::new(prog).args(args).status() {
+                        Ok(status) => {
+                            // optionally check status or do nothing
+                            if !status.success() {
+                                // command didn't exit successfully
+                                // optionally check the actual exit code
+                                if let Some(code) = status.code() {
+                                    println!("Command {} exited with code {}", prog, code);
+                                } else {
+                                    println!("Command {} terminated by signal", prog);
+                                }
                             }
+                        },
+                        Err(_) => {
+                            println!("{}: command not found", prog);
                         }
-                    },
-                    Err(_) => {
-                        println!("{}: command not found", prog);
                     }
                 }
             }
+
         }
         input.clear();
     }
