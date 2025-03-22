@@ -1,6 +1,7 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
 use std::fs::File;
+use std::fs::OpenOptions;
 
 
 // this gives you three distinct states, None: not inside any quotes, Single: inside single quotes, Double: inside double quotes
@@ -160,7 +161,33 @@ fn main() {
                     println!("Error: no output file specified after redirection operator");
                     continue;
                 }
-            }  
+            } else if let Some(pos) = tokens.iter().position(|x| x == ">>" || x == "1>>") {
+                let command_part = tokens[..pos].to_vec();
+                let output_file = tokens.get(pos + 1).cloned();
+                // process appending stdout
+                if let Some(file_token) = output_file {
+                    //  use Rust's std::fs::OpenOptions to open the file with the append flag set
+                    let file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(&file_token)
+                        .unwrap_or_else(|e| {
+                            println!("Error openeing {}: {}", file_token, e);
+                            std::process::exit(1);
+                        });
+                    // extract the executable and arguments from the command part
+                    let executable = command_part[0].clone();
+                    let args = &command_part[1..];
+                    std::process::Command::new(executable)
+                        .args(args)
+                        .stdout(file)
+                        .status();
+                    continue; //skip normal execution
+                } else {
+                    println!("Error: no output file specified after redirection operator");
+                    continue;
+                }
+            }
             
               else {
                 // Process as a normal echo command.
@@ -308,7 +335,33 @@ fn main() {
                     println!("Error: no output file specified after redirection operator");
                     continue;
                 }
-            } 
+            } else if let Some(pos) = tokens.iter().position(|x| x == ">>" || x == "1>>") {
+                let command_part = tokens[..pos].to_vec();
+                let output_file = tokens.get(pos + 1).cloned();
+                // process appending stdout
+                if let Some(file_token) = output_file {
+                    //  use Rust's std::fs::OpenOptions to open the file with the append flag set
+                    let file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(&file_token)
+                        .unwrap_or_else(|e| {
+                            println!("Error openeing {}: {}", file_token, e);
+                            std::process::exit(1);
+                        });
+                    // extract the executable and arguments from the command part
+                    let executable = command_part[0].clone();
+                    let args = &command_part[1..];
+                    std::process::Command::new(executable)
+                        .args(args)
+                        .stdout(file)
+                        .status();
+                    continue; //skip normal execution
+                } else {
+                    println!("Error: no output file specified after redirection operator");
+                    continue;
+                }
+            }
             
             else {
                 // Process as a normal command.
