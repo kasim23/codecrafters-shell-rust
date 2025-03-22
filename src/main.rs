@@ -99,16 +99,7 @@ pub fn parse_command(input: &str) -> Vec<String> {
     if !current.is_empty() {
         tokens.push(current);
     }
-    // Now check for redirection:
-    if let Some(pos) = tokens.iter().position(|x| x == ">" || x == "1>") {
-        let command_part = tokens[..pos].to_vec();
-        let output_file = tokens.get(pos + 1).cloned();
-        // Return or process these as needed, for example:
-        return (command_part, output_file);
-    } else {
-        // No redirection found, return tokens normally (and perhaps None for output file)
-        return (tokens, None);
-    }
+    tokens
 }
 
 
